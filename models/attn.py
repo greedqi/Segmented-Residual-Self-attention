@@ -133,6 +133,7 @@ class AttentionLayer(nn.Module):
         d_keys = d_keys or (d_model//n_heads)
         d_values = d_values or (d_model//n_heads)
 
+        self.d_model=d_model
         self.inner_attention = attention
         self.query_projection = nn.Linear(d_model, d_keys * n_heads)
         self.key_projection = nn.Linear(d_model, d_keys * n_heads)
@@ -161,3 +162,39 @@ class AttentionLayer(nn.Module):
         out = out.view(B, L, -1)
 
         return self.out_projection(out), attn
+
+# auther：me
+# create time：2022.11.12
+# last time：
+class REncoderLayer(nn.Module):
+    def __init__(self,attention_layer,n_R,seq_len,dropout=0.1):
+        super(REncoderLayer,self).__init__()
+
+        self.d_model=attention_layer.d_model
+        self.n_R=n_R
+        print("ssssssss",n_R)
+        self.sebseq_len=int(seq_len/(n_R))
+        self.attention_layer=attention_layer
+
+        self.W = nn.Parameter(torch.Tensor(self.d_model, self.d_model), requires_grad=True)
+        self.b = nn.Parameter(torch.Tensor(self.d_model), requires_grad=True)
+        self.norm = nn.LayerNorm(self.d_model)
+        self.dropout = nn.Dropout(dropout)
+
+        # self.fc = nn.Linear(seq_len,self.d_model,bias=True)
+
+    def forward(self, x,attn_mask=None):
+        c_out=torch.Tensor(x.size())
+        for i in range(self.n_R):
+            x_subseq=x[:,self.sebseq_len*i:self.sebseq_len*(i+1),:]
+            h,attn=self.attention_layer(x_subseq)
+            if i!=0:
+            #    h =torch.relu(h+h_last@self.W+self.b)
+                h =h+self.dropout(self.norm(torch.relu(h+torch.relu(h_last+self.b))))
+
+                # h =torch.relu(h_last+torch.relu(h))
+            #    h = h + self.dropout(self.norm(h+h_last@self.W+self.b))
+            h_last=h
+            c_out[:,self.sebseq_len*i:self.sebseq_len*(i+1)]=h
+        return c_out,attn
+        # return x,attn
