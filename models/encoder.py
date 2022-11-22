@@ -46,13 +46,14 @@ class EncoderLayer(nn.Module):
             x, x, x,
             attn_mask = attn_mask
         )
-        x = x + self.dropout(new_x)
+        # x = x + self.dropout(new_x)
 
-        y = x = self.norm1(x)
-        y = self.dropout(self.activation(self.conv1(y.transpose(-1,1))))
-        y = self.dropout(self.conv2(y).transpose(-1,1))
+        # y = x = self.norm1(x)
+        # y = self.dropout(self.activation(self.conv1(y.transpose(-1,1))))
+        # y = self.dropout(self.conv2(y).transpose(-1,1))
 
-        return self.norm2(x+y), attn
+        # return self.norm2(x+y), attn
+        return new_x, attn
 
 class Encoder(nn.Module):
     def __init__(self, attn_layers, conv_layers=None, norm_layer=None):
@@ -97,3 +98,54 @@ class EncoderStack(nn.Module):
         x_stack = torch.cat(x_stack, -2)
         
         return x_stack, attns
+
+# auther：me
+# create time：2022.11.12
+# last time：2022.11.21
+class REncoderLayer(nn.Module):
+    def __init__(self,attention_layer,n_R,seq_len,dropout=0.1,device=torch.device('cuda:0')):
+        super(REncoderLayer,self).__init__()
+
+        self.d_model=attention_layer.d_model
+        self.attention_layer=attention_layer
+        self.device=device
+        self.n_R = n_R
+        self.sebseq_len=sebseq_len=seq_len//n_R
+
+        self.W = nn.Parameter(torch.Tensor(sebseq_len, sebseq_len), requires_grad=True)
+        self.w = nn.Parameter(torch.Tensor(self.d_model), requires_grad=True)
+        self.b = nn.Parameter(torch.Tensor(self.d_model), requires_grad=True)
+        self.norm = nn.LayerNorm(self.d_model)
+        self.dropout = nn.Dropout(dropout)
+
+        # self.fc = nn.Linear(seq_len,self.d_model,bias=True)
+
+    def forward(self, x,attn_mask=None):
+
+        c_out=torch.Tensor(x.size()).to(self.device)
+
+        sebseq_len=self.sebseq_len
+        for i in range(self.n_R):
+            x_subseq=x[:,sebseq_len*i:sebseq_len*(i+1),:]
+            h,attn=self.attention_layer(x_subseq)
+            if i!=0:
+                h = h+self.dropout(self.norm(h+self.W@h_last+self.b))
+            h_last=h
+            c_out[:,sebseq_len*i:sebseq_len*(i+1)]=h
+        
+        # c_out2=torch.Tensor(x.size()).to(self.device)
+        # sebseq_len=self.seq_len//(self.n_R//2)
+        # for i in range(self.n_R//2):
+        #     x_subseq=x[:,sebseq_len*i:sebseq_len*(i+1),:]
+        #     h2,attn2=self.attention_layer(x_subseq)
+        #     if i!=0:
+        #          h2 = h2+self.dropout(self.norm(torch.relu(h2+self.w*h_last+self.b)))
+        #     h_last=h2
+        #     c_out2[:,sebseq_len*i:sebseq_len*(i+1)]=h2
+        
+        # self.c_out2=c_out2
+        self.c_out2=c_out
+        return c_out,attn
+
+    def get_out2(self):
+        return self.c_out2
