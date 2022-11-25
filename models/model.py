@@ -198,6 +198,13 @@ class RTransformer(nn.Module):
                         d_ff,
                         dropout=dropout,
                         activation=activation
+                    ),EncoderLayer(
+                        AttentionLayer(Attn(False, factor, attention_dropout=dropout, output_attention=output_attention),
+                                       d_model, n_heads, mix=False),
+                        d_model,
+                        d_ff,
+                        dropout=dropout,
+                        activation=activation
                     ),
                     n_R, seq_len
                 )

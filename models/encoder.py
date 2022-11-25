@@ -103,11 +103,12 @@ class EncoderStack(nn.Module):
 # create time：2022.11.12
 # last time：2022.11.21
 class REncoderLayer(nn.Module):
-    def __init__(self,attention_layer,n_R,seq_len,dropout=0.1,device=torch.device('cuda:0')):
+    def __init__(self,attention_layer,attention_layer2,n_R,seq_len,dropout=0.1,device=torch.device('cuda:0')):
         super(REncoderLayer,self).__init__()
 
         self.d_model=attention_layer.d_model
         self.attention_layer=attention_layer
+        self.attention_layer2=attention_layer2
         self.device=device
         self.n_R = n_R
         self.sebseq_len=sebseq_len=seq_len//n_R
@@ -128,11 +129,13 @@ class REncoderLayer(nn.Module):
         for i in range(self.n_R):
             x_subseq=x[:,sebseq_len*i:sebseq_len*(i+1),:]
             h,attn=self.attention_layer(x_subseq)
-            if i!=0:
-                h = h+self.dropout(self.norm(h+self.W@h_last+self.b))
-            h_last=h
+            # if i!=0:
+            #     # h = h+self.dropout(self.norm(h+self.W@h_last+self.b))
+            #     h = h+self.W@h_last+self.b
+            # # h=self.norm(h)
+            # h_last=h
             c_out[:,sebseq_len*i:sebseq_len*(i+1)]=h
-        
+        # c_out=self.norm(c_out)
         # c_out2=torch.Tensor(x.size()).to(self.device)
         # sebseq_len=self.seq_len//(self.n_R//2)
         # for i in range(self.n_R//2):
