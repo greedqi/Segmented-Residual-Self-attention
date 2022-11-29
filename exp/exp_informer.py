@@ -223,6 +223,9 @@ class Exp_Informer(Exp_Basic):
 
         mae, mse, rmse, mape, mspe = metric(preds, trues)
         print('mse:{}, mae:{}'.format(mse, mae))
+        file = open("./test.txt",'a')
+        file.write('{}'.format(mse))
+        file.write('\n')
 
         np.save(folder_path+'metrics.npy', np.array([mae, mse, rmse, mape, mspe]))
         np.save(folder_path+'pred.npy', preds)
