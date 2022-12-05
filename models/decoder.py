@@ -29,11 +29,12 @@ class DecoderLayer(nn.Module):
             attn_mask=cross_mask
         )[0])
 
-        y = x = self.norm2(x)
-        y = self.dropout(self.activation(self.conv1(y.transpose(-1,1))))
-        y = self.dropout(self.conv2(y).transpose(-1,1))
+        # y = x = self.norm2(x)
+        # y = self.dropout(self.activation(self.conv1(y.transpose(-1,1))))
+        # y = self.dropout(self.conv2(y).transpose(-1,1))
 
-        return self.norm3(x+y)
+        # return self.norm3(x+y)
+        return x
 
 class Decoder(nn.Module):
     def __init__(self, layers, norm_layer=None):
@@ -49,3 +50,45 @@ class Decoder(nn.Module):
             x = self.norm(x)
 
         return x
+
+# auther：me
+# create time：2022.12.1
+# last time：2022.12.1
+class RDecoderLayer(nn.Module):
+    def __init__(self,attention_layer,attention_layer2,attention_layer3,n_R,seq_len,dropout=0.1,device=torch.device('cuda:0')):
+        super(RDecoderLayer,self).__init__()
+
+        self.d_model=attention_layer.d_model
+        self.attention_layer=attention_layer
+        self.attention_layer2=attention_layer2
+        self.attention_layer3=attention_layer3
+        self.device=device
+        self.n_R = n_R
+        self.sebseq_len=sebseq_len=seq_len//n_R
+
+        self.W = nn.Parameter(torch.Tensor(sebseq_len, sebseq_len), requires_grad=True)
+        self.w = nn.Parameter(torch.Tensor(self.d_model), requires_grad=True)
+        self.b = nn.Parameter(torch.Tensor(self.d_model), requires_grad=True)
+        self.norm = nn.LayerNorm(self.d_model)
+        self.dropout = nn.Dropout(dropout)
+
+        # self.fc = nn.Linear(seq_len,self.d_model,bias=True)
+
+
+
+    def forward(self, x,attn_mask=None):
+
+        c_out=torch.zeros(x.size()).to(self.device)
+
+        sebseq_len=self.sebseq_len
+        for i in range(self.n_R):
+            x_subseq=x[:,sebseq_len*i:sebseq_len*(i+1),:]
+            h,attn=self.attention_layer(x_subseq)
+            c_out[:,sebseq_len*i:sebseq_len*(i+1)]=h
+     
+        
+
+        out=c_out
+
+        self.c_out2=c_out
+        return out,attn
