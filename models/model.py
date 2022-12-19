@@ -5,7 +5,7 @@ import torch.nn.functional as F
 from utils.masking import TriangularCausalMask, ProbMask
 from models.encoder import Encoder, EncoderLayer, ConvLayer, EncoderStack, REncoderLayer
 from models.decoder import Decoder, DecoderLayer
-from models.attn import FullAttention, ProbAttention, AttentionLayer
+from models.attn import FullAttention, ProbAttention, AttentionLayer,RAttentionLayer
 from models.embed import DataEmbedding
 
 import argparse
@@ -199,14 +199,16 @@ class RTransformer(nn.Module):
                         dropout=dropout,
                         activation=activation
                     ),
-                    n_R, seq_len
+                    n_R, seq_len,device=device
                 )
         # Decoder
         self.decoder = Decoder(
             [
                 DecoderLayer(
-                    AttentionLayer(Attn(True, factor, attention_dropout=dropout, output_attention=False),
-                                   d_model, n_heads, mix=mix),
+                    # AttentionLayer(Attn(True, factor, attention_dropout=dropout, output_attention=False),
+                                #    d_model, n_heads, mix=mix),
+                    RAttentionLayer(Attn(True, factor, attention_dropout=dropout, output_attention=False),
+                                   d_model, n_heads, n_R,mix=mix,device=device),
                     AttentionLayer(FullAttention(False, factor, attention_dropout=dropout, output_attention=False),
                                    d_model, n_heads, mix=False),
                     d_model,
@@ -226,18 +228,12 @@ class RTransformer(nn.Module):
         dec_emb = self.dec_embedding(x_dec, x_mark_dec)
 
         enc_out, attns = self.encoder(enc_emb, attn_mask=enc_self_mask)
-        enc_out2=self.encoder.get_out2()
 
        
         dec_out = self.decoder(
             dec_emb, enc_out, x_mask=dec_self_mask, cross_mask=dec_enc_mask)
         dec_out = self.projection(dec_out)
 
-        dec_out2 = self.decoder(
-            dec_emb, enc_out2, x_mask=dec_self_mask, cross_mask=dec_enc_mask)
-        dec_out2 = self.projection(dec_out2)
-
-        self.dec_out2=dec_out2
 
  
         return dec_out[:, -self.pred_len:, :]  # [B, L, D]

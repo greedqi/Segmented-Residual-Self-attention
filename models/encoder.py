@@ -162,22 +162,22 @@ class REncoderLayer(nn.Module):
             # h = self.W@h+h_last+self.b
             h_last=h
             c_out[:,sebseq_len*i:sebseq_len*(i+1)]=h
-     
-        # c_out1=c_out
-        # x=0.5*x+0.5*c_out1
-        # for i in range(self.n_R):
-        #     x_subseq=x[:,sebseq_len*i:sebseq_len*(i+1),:]
-        #     h,attn=self.attention_layer(x_subseq)
-        #     h=self.dropout(h)
-        #     c_out[:,sebseq_len*i:sebseq_len*(i+1)]=h
-        # c_out2=c_out
+        c_out1=c_out
 
-        # x=0.5*c_out2+0.5*c_out1
-        # for i in range(self.n_R):
-        #     x_subseq=x[:,sebseq_len*i:sebseq_len*(i+1),:]
-        #     h,attn=self.attention_layer(x_subseq)
-        #     h=self.dropout(h)
-        #     c_out[:,sebseq_len*i:sebseq_len*(i+1)]=h
+        x=0.5*x+0.5*c_out1
+        for i in range(self.n_R):
+            x_subseq=x[:,sebseq_len*i:sebseq_len*(i+1),:]
+            h,attn=self.attention_layer(x_subseq)
+            # h=self.dropout(h)
+            c_out[:,sebseq_len*i:sebseq_len*(i+1)]=h
+        c_out2=c_out
+
+        x=0.5*c_out2+0.5*c_out1
+        for i in range(self.n_R):
+            x_subseq=x[:,sebseq_len*i:sebseq_len*(i+1),:]
+            h,attn=self.attention_layer(x_subseq)
+            # h=self.dropout(h)
+            c_out[:,sebseq_len*i:sebseq_len*(i+1)]=h
 
         
 

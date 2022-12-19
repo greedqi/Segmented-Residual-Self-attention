@@ -163,5 +163,58 @@ class AttentionLayer(nn.Module):
 
         return self.out_projection(out), attn
 
+class RAttentionLayer(nn.Module):
+    def __init__(self, attention, d_model, n_heads, n_R,
+                d_keys=None, d_values=None, mix=False,device=torch.device('cuda:0')):
+        super(RAttentionLayer, self).__init__()
 
+        self.attention_layer=attention
+        self.device=device
+        self.n_R = n_R
+
+        self.attention_layer=AttentionLayer(attention, d_model, n_heads, 
+                 d_keys=None, d_values=None, mix=False)
+
+
+    def forward(self, queries, keys, values, attn_mask):
+
+        c_out=torch.zeros(queries.size()).to(self.device)
+        
+        queries_sebseq_len=queries.size()[1]//self.n_R
+        keys_sebseq_len=keys.size()[1]//self.n_R
+        values_sebseq_len=values.size()[1]//self.n_R
+
+        for i in range(self.n_R):
+            queries_subseq=queries[:,queries_sebseq_len*i:queries_sebseq_len*(i+1),:]
+            keys_subseq=keys[:,keys_sebseq_len*i:keys_sebseq_len*(i+1),:]
+            values_subseq=values[:,values_sebseq_len*i:values_sebseq_len*(i+1),:]
+
+            h,attn=self.attention_layer(queries_subseq, keys_subseq, values_subseq, attn_mask)
+            if i==0:
+                h_last=torch.zeros(h.size()).to(self.device)
+            h_last=h
+            c_out[:,queries_sebseq_len*i:queries_sebseq_len*(i+1)]=h
+        c_out1=c_out
+
+
+        queries=0.5*queries+0.5*c_out1
+        keys=0.5*keys+0.5*c_out1
+        values=0.5*values+0.5*c_out1
+
+
+        for i in range(self.n_R):
+            queries_subseq=queries[:,queries_sebseq_len*i:queries_sebseq_len*(i+1),:]
+            keys_subseq=keys[:,keys_sebseq_len*i:keys_sebseq_len*(i+1),:]
+            values_subseq=values[:,values_sebseq_len*i:values_sebseq_len*(i+1),:]
+
+            h,attn=self.attention_layer(queries_subseq, keys_subseq, values_subseq, attn_mask)
+            if i==0:
+                h_last=torch.zeros(h.size()).to(self.device)
+            h_last=h
+            c_out[:,queries_sebseq_len*i:queries_sebseq_len*(i+1)]=h
+
+        out=c_out    
+        # out,attn=self.attention_layer(queries, keys, values, attn_mask)
+
+        return out, attn
 
