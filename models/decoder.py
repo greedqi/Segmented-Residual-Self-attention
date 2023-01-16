@@ -29,11 +29,6 @@ class DecoderLayer(nn.Module):
             attn_mask=cross_mask
         )[0])
 
-        # y = x = self.norm2(x)
-        # y = self.dropout(self.activation(self.conv1(y.transpose(-1,1))))
-        # y = self.dropout(self.conv2(y).transpose(-1,1))
-
-        # return self.norm3(x+y)
         return x
 
 class Decoder(nn.Module):

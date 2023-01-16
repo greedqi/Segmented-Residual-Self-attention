@@ -1,6 +1,6 @@
 from data.data_loader import Dataset_ETT_hour, Dataset_ETT_minute, Dataset_Custom, Dataset_Pred
 from exp.exp_basic import Exp_Basic
-from models.model import Informer, InformerStack,RTransformer
+from models.model import RTransformer
 
 from utils.tools import EarlyStopping, adjust_learning_rate
 from utils.metrics import metric
@@ -18,21 +18,15 @@ import time
 import warnings
 warnings.filterwarnings('ignore')
 
-class Exp_Informer(Exp_Basic):
+class Exp_model(Exp_Basic):
     def __init__(self, args):
-        super(Exp_Informer, self).__init__(args)
+        super(Exp_model, self).__init__(args)
     
     def _build_model(self):
         model_dict = {
-            # 'informer':Informer,
-            # 'informerstack':InformerStack,
-            'informer':RTransformer,
-            'informerstack':RTransformer,
-            
+            'srformer':RTransformer
         }
-        if self.args.model=='informer' or self.args.model=='informerstack':
-            e_layers = self.args.e_layers if self.args.model=='informer' else self.args.s_layers
-            model = model_dict[self.args.model](
+        model = model_dict[self.args.model](
                 self.args.enc_in,
                 self.args.dec_in, 
                 self.args.c_out, 
@@ -42,20 +36,17 @@ class Exp_Informer(Exp_Basic):
                 self.args.factor,
                 self.args.d_model, 
                 self.args.n_heads, 
-                e_layers, # self.args.e_layers,
+                self.args.R_n, # self.args.e_layers,
                 self.args.d_layers, 
                 self.args.d_ff,
                 self.args.dropout, 
-                self.args.attn,
                 self.args.embed,
                 self.args.freq,
                 self.args.activation,
                 self.args.output_attention,
-                self.args.distil,
                 self.args.mix,
                 self.device
             ).float()
-        
         if self.args.use_multi_gpu and self.args.use_gpu:
             model = nn.DataParallel(model, device_ids=self.args.device_ids)
         return model
@@ -69,9 +60,7 @@ class Exp_Informer(Exp_Basic):
             'ETTm1':Dataset_ETT_minute,
             'ETTm2':Dataset_ETT_minute,
             'WTH':Dataset_Custom,
-            'ECL':Dataset_Custom,
-            'Solar':Dataset_Custom,
-            'custom':Dataset_Custom,
+            'ECL':Dataset_Custom
         }
         Data = data_dict[self.args.data]
         timeenc = 0 if args.embed!='timeF' else 1

@@ -37,22 +37,11 @@ class EncoderLayer(nn.Module):
         self.activation = F.relu if activation == "relu" else F.gelu
 
     def forward(self, x, attn_mask=None):
-        # x [B, L, D]
-        # x = x + self.dropout(self.attention(
-        #     x, x, x,
-        #     attn_mask = attn_mask
-        # ))
+
         new_x, attn = self.attention(
             x, x, x,
             attn_mask = attn_mask
         )
-        # x = x + self.dropout(new_x)
-
-        # y = x = self.norm1(x)
-        # y = self.dropout(self.activation(self.conv1(y.transpose(-1,1))))
-        # y = self.dropout(self.conv2(y).transpose(-1,1))
-
-        # return self.norm2(x+y), attn
         return new_x, attn
 
 class Encoder(nn.Module):
@@ -118,126 +107,54 @@ class REncoderLayer(nn.Module):
         self.norm = nn.LayerNorm(self.d_model)
         self.dropout = nn.Dropout(dropout)
 
-        # self.fc = nn.Linear(seq_len,self.d_model,bias=True)
 
 
 
     def forward(self, x,attn_mask=None):
 
+        self.device=x.device
+
+        residual_flag=True
+
         c_out=torch.zeros(x.size()).to(self.device)
         
-
-        # sebseq_len=self.sebseq_len
-        # for i in range(self.n_R):
-        #     # x_subseq=0.5*x[:,sebseq_len*i:sebseq_len*(i+1),:]+0.5*c_out[:,:sebseq_len*(i+1),:]
-        #     a=c_out[:,:sebseq_len*(i),:]
-        #     b=x[:,sebseq_len*i:sebseq_len*(i+1),:]
-        #     x_subseq=0.5*torch.cat((a,b),dim=1)+0.5*x[:,:sebseq_len*(i+1),:]
-        #     h,attn=self.attention_layer(x_subseq)
-        #     c_out[:,:sebseq_len*(i+1)]=h
-
-        # out=c_out
-        
-        # sebseq_len=self.sebseq_len
-        # for i in range(self.n_R-1):
-        #     a=x[:,:sebseq_len*(i+1),:]
-        #     b=x[:,sebseq_len*(i+1):,:]
-        #     h1,attn=self.attention_layer(a)
-        #     h2,attn=self.attention_layer2(b)
-        #     h = torch.cat((h1,h2),dim=1)
-        #     c_out+=h
-        # c_out1=c_out
-
-
 
 
         sebseq_len=self.sebseq_len
         for i in range(self.n_R):
             x_subseq=x[:,sebseq_len*i:sebseq_len*(i+1),:]
             h,attn=self.attention_layer(x_subseq)
-            # h=self.dropout(h)
             if i==0:
                 h_last=torch.zeros(h.size()).to(self.device)
-            # h = h+self.w*h_last
-            # h = self.W@h+h_last+self.b
             h_last=h
             c_out[:,sebseq_len*i:sebseq_len*(i+1)]=h
         c_out1=c_out
 
-        x=0.5*x+0.5*c_out1
+        if residual_flag:
+            x=0.5*x+0.5*c_out1
+        else:
+            x=c_out1
+        
+        
         for i in range(self.n_R):
             x_subseq=x[:,sebseq_len*i:sebseq_len*(i+1),:]
             h,attn=self.attention_layer(x_subseq)
-            # h=self.dropout(h)
             c_out[:,sebseq_len*i:sebseq_len*(i+1)]=h
         c_out2=c_out
 
-        x=0.5*c_out2+0.5*c_out1
-        for i in range(self.n_R):
-            x_subseq=x[:,sebseq_len*i:sebseq_len*(i+1),:]
-            h,attn=self.attention_layer(x_subseq)
-            # h=self.dropout(h)
-            c_out[:,sebseq_len*i:sebseq_len*(i+1)]=h
+        # x=0.5*c_out2+0.5*c_out1
+        # for i in range(self.n_R):
+        #     x_subseq=x[:,sebseq_len*i:sebseq_len*(i+1),:]
+        #     h,attn=self.attention_layer(x_subseq)
+        #     # h=self.dropout(h)
+        #     c_out[:,sebseq_len*i:sebseq_len*(i+1)]=h
+        # c_out3=c_out
+
 
         
 
         out=c_out
-        # out=self.dropout(c_out)
 
-
-        # for i in range(self.n_R):
-        #     x_subseq=x[:,sebseq_len*i:sebseq_len*(i+1),:]
-        #     h,attn=self.attention_layer3(x_subseq)
-        #     c_out[:,sebseq_len*i:sebseq_len*(i+1)]=h    
-
-        # c_out=c_out1+c_out
         self.c_out2=c_out
         return out,attn
 
-    def get_out2(self):
-        return self.c_out2
-
-
-    # def forward(self, x,attn_mask=None):
-
-    #     c_out=torch.Tensor(x.size()).to(self.device)
-
-    #     sebseq_len=self.sebseq_len
-    #     for i in range(self.n_R):
-    #         x_subseq=x[:,sebseq_len*i:sebseq_len*(i+1),:]
-    #         h,attn=self.attention_layer(x_subseq)
-    #         # if i!=0:
-    #         #     # h = h+self.dropout(self.norm(h+self.W@h_last+self.b))
-    #         #     h = h+self.W@h_last+self.b
-    #         # # h=self.norm(h)
-    #         # h_last=h
-    #         c_out[:,sebseq_len*i:sebseq_len*(i+1)]=h
-    #     # c_out=self.norm(c_out)
-    #     # c_out2=torch.Tensor(x.size()).to(self.device)
-    #     # sebseq_len=self.seq_len//(self.n_R//2)
-    #     # for i in range(self.n_R//2):
-    #     #     x_subseq=x[:,sebseq_len*i:sebseq_len*(i+1),:]
-    #     #     h2,attn2=self.attention_layer(x_subseq)
-    #     #     if i!=0:
-    #     #          h2 = h2+self.dropout(self.norm(torch.relu(h2+self.w*h_last+self.b)))
-    #     #     h_last=h2
-    #     #     c_out2[:,sebseq_len*i:sebseq_len*(i+1)]=h2
-        
-    #     out=c_out
-    #     for i in range(self.n_R//2):
-    #         x_subseq=out[:,sebseq_len*i:sebseq_len*(i+1),:]
-    #         h,attn=self.attention_layer2(x_subseq)
-    #         # if i!=0:
-    #         #     # h = h+self.dropout(self.norm(h+self.W@h_last+self.b))
-    #         #     h = h+self.W@h_last+self.b
-    #         # # h=self.norm(h)
-    #         # h_last=h
-    #         c_out[:,sebseq_len*i:sebseq_len*(i+1)]=h
-
-    #     # c_out,attn=self.attention_layer2(c_out)
-    #     # c_out,attn=self.attention_layer3(c_out)
-    #     self.c_out2=c_out
-    #     return c_out,attn
-
-    # def get_out2(self):
-    #     return self.c_out2
