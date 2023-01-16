@@ -1,3 +1,10 @@
+
+## This code has been improved from informer
+https://github.com/zhouhaoyi/Informer2020
+
+## introduce
+LSTF(Long time series forecasting)is of great prac-tical significance in many applications, which re-quires higher prediction accuracy and longer pre-diction range. With the recent emergence of Transformer, many LSTF methods have shifted their research focus to transformer, and effective progress has been made. However, the quadratic time complexity of Transformer leads to excessive computation overhead when faced with long se-quences. This prevents it from being applied di-rectly to the LSTF problem. To address these problems, we propose an Segmented Residual Self-attention architecture based on naive self-attention structure, bringing two promising features: (1) We propose to select segmented hy-perparameter to extend the self-attention method to a more universal form, making the computa-tional complexity adjustable and computational overhead  reducible (2)  By introducing residual shared parameters into the self-attention layer, a recurrent structure is constructed, In this way the self-attention layer can extract features well through segmented sequence, and reduce the over-fitting problem caused by  long sequence. Experi-mental results on various large-scale data sets show that our proposed method is significantly superior to the previous algorithm.
+
 ## Requirements
 
 - Python 3.6
@@ -29,14 +36,13 @@ Commands for training and testing the model with *ProbSparse* self-attention on 
 
 ```bash
 # ETTh1
-python -u main_informer.py --model informer --data ETTh1 --attn prob --freq h
+python3 -u main.py --model srformer --data ETTh1 --freq h 
 
 # ETTh2
-python -u main_informer.py --model informer --data ETTh2 --attn prob --freq h
+python -u main.py --model srformer --data ETTh2  --freq h
 
 # ETTm1
-python -u main_informer.py --model informer --data ETTm1 --attn prob --freq t
+python -u main.py --model srformer --data ETTm1 --freq t
 ```
 
-More parameter information please refer to `main_informer.py`.
 
